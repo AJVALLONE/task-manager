@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager — Anthony Vallone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#030d1a; --surface:#041626; --card:#061e36; --card-hover:#082440;
+      --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.14);
+      --cream:#ddeeff; --muted:#4d7a9e; --accent:#38bdf8; --accent-lo:rgba(56,189,248,0.1);
+      --green:#5a9e6f; --green-lo:rgba(90,158,111,0.12);
+      --blue:#4a82a8; --blue-lo:rgba(74,130,168,0.12);
+      --red:#c0544a; --red-lo:rgba(192,84,74,0.1);
+      --ff-display:'Cormorant Garamond',Georgia,serif;
+      --ff-body:'Outfit',sans-serif;
+      --ff-mono:'JetBrains Mono',monospace;
+    }
+
+    /* ══ LUXURY GLASS SYSTEM ══ */
+    body::before {
+      content:''; position:fixed; inset:0;
+      background:
+        radial-gradient(ellipse 80% 55% at 18% -5%,  rgba(56,189,248,0.08) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 45% at 82% 108%, rgba(99,102,241,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 35% at 55% 55%,  rgba(14,165,233,0.03) 0%, transparent 60%);
+      pointer-events:none; z-index:0;
+    }
+    .grad {
+      background:linear-gradient(135deg,#ddeeff 0%,#38bdf8 55%,#818cf8 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    body { position:relative; background:var(--bg); color:var(--cream); font-family:var(--ff-body); font-size:16px; line-height:1.7; font-weight:300; min-height:100vh; }
+
+    /* NAV */
+    nav { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 4rem; background:rgba(3,13,26,0.72); border-bottom:1px solid rgba(56,189,248,0.1); backdrop-filter:blur(24px) saturate(1.8); -webkit-backdrop-filter:blur(24px) saturate(1.8); position:sticky; top:0; z-index:50; }
+    .nav-logo { font-family:var(--ff-mono); font-size:0.85rem; color:var(--accent); letter-spacing:0.05em; text-decoration:none; }
+    .nav-back { font-family:var(--ff-mono); font-size:0.72rem; color:var(--muted); text-decoration:none; letter-spacing:0.1em; text-transform:uppercase; transition:color 0.2s; }
+    .nav-back:hover { color:var(--cream); }
+
+    /* PROGRESS BAR */
+    .progress-track { position:relative; z-index:1;
+      height: 3px; background: var(--border);
+      position: sticky; top: 60px; z-index: 49;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--green));
+      width: 0%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .progress-label {
+      position: absolute; right: 4rem; top: 6px;
+      font-family: var(--ff-mono); font-size: 0.62rem;
+      color: var(--muted); letter-spacing: 0.1em;
+      transition: color 0.3s;
+    }
+    .progress-label.complete { color: var(--green); }
+
+    /* HEADER */
+    .page-header { padding:2.5rem 4rem 1.5rem; display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:1.5rem; }
+    .page-tag { font-family:var(--ff-mono); font-size:0.7rem; color:var(--accent); letter-spacing:0.25em; text-transform:uppercase; margin-bottom:0.5rem; }
+    .page-title { font-family:var(--ff-display); font-size:clamp(2rem,4vw,3.5rem); font-weight:600; line-height:1.0; color:var(--cream); }
+    .page-title em { font-style:italic; color:var(--accent); }
+    .add-task-btn { padding:0.75rem 1.5rem; background:var(--accent); color:#030d1a; font-family:var(--ff-mono); font-size:0.72rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; border:none; cursor:pointer; transition:opacity 0.2s, transform 0.2s; }
+    .add-task-btn:hover { opacity:0.85; transform:translateY(-1px); }
+
+    /* FORM PANEL */
+    .form-panel { display:none; padding:1.5rem 4rem; background:var(--surface); border-bottom:1px solid var(--border); animation:slideDown 0.22s ease; }
+    .form-panel.open { display:block; }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .form-inner { display:flex; gap:0.75rem; flex-wrap:wrap; max-width:780px; }
+    .form-input { flex:1; min-width:180px; padding:0.75rem 1rem; background:var(--card); border:1px solid var(--border); color:var(--cream); font-family:var(--ff-body); font-size:0.9rem; font-weight:300; outline:none; transition:border-color 0.2s; }
+    .form-input::placeholder { color:var(--muted); }
+    .form-input:focus { border-color:rgba(56,189,248,0.4); }
+    .form-select { padding:0.75rem 2rem 0.75rem 1rem; background:var(--card); border:1px solid var(--border); color:var(--cream); font-family:var(--ff-mono); font-size:0.72rem; letter-spacing:0.05em; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%237a7469' d='M0 0l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 0.75rem center; }
+    .form-submit { padding:0.75rem 1.5rem; background:var(--accent); color:#030d1a; font-family:var(--ff-mono); font-size:0.72rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; border:none; cursor:pointer; transition:opacity 0.2s; }
+    .form-submit:hover { opacity:0.85; }
+    .form-cancel { padding:0.75rem 1.25rem; background:transparent; color:var(--muted); font-family:var(--ff-mono); font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; border:1px solid var(--border); cursor:pointer; transition:border-color 0.2s, color 0.2s; }
+    .form-cancel:hover { border-color:var(--border-hi); color:var(--cream); }
+
+    /* BOARD */
+    .board { display:grid; grid-template-columns:repeat(3,1fr); min-height:calc(100vh - 200px); }
+    .column {
+      backdrop-filter:blur(20px) saturate(1.4);
+      -webkit-backdrop-filter:blur(20px) saturate(1.4); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+    .column:last-child { border-right:none; }
+    .column-header { padding:1.5rem 2rem 1rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; position:sticky; top:63px; background:var(--bg); z-index:10; }
+    .column-title { font-family:var(--ff-mono); font-size:0.72rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--cream); }
+    .column-count { font-family:var(--ff-mono); font-size:0.65rem; color:var(--muted); background:var(--card); border:1px solid var(--border); padding:0.15rem 0.5rem; min-width:1.6rem; text-align:center; transition:all 0.3s ease; }
+    .column-count.bump { transform:scale(1.4); color:var(--accent); border-color:rgba(56,189,248,0.4); }
+    .column-color { width:100%; height:2px; }
+    .col-backlog    .column-color { background:var(--muted); }
+    .col-in-progress .column-color { background:var(--accent); }
+    .col-done        .column-color { background:var(--green); }
+
+    /* TASK LIST */
+    .task-list { flex:1; padding:1.25rem; min-height:120px; transition:background 0.15s; display:flex; flex-direction:column; gap:0.75rem; }
+    .task-list.drag-over { background:rgba(56,189,248,0.04); outline:1px dashed rgba(56,189,248,0.2); outline-offset:-4px; }
+
+    /* TASK CARD */
+    .task-card {
+      background:var(--card); border:1px solid var(--border); padding:1rem 1rem 0.85rem;
+      cursor:grab; position:relative;
+      transition:border-color 0.2s, transform 0.2s, box-shadow 0.2s, opacity 0.3s;
+      user-select:none;
+      animation:cardIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes cardIn { from{opacity:0;transform:translateY(-12px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .task-card:hover { border-color:var(--border-hi); transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.35); }
+    .task-card.dragging { opacity:0.4; cursor:grabbing; transform:scale(0.97) rotate(1.5deg); box-shadow:0 12px 40px rgba(0,0,0,0.5); }
+    .task-card.removing { animation:cardOut 0.28s ease forwards; }
+    @keyframes cardOut { to{opacity:0;transform:scale(0.9) translateX(10px)} }
+
+    .task-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; margin-bottom:0.5rem; }
+    .task-title { font-size:0.9rem; font-weight:400; color:var(--cream); line-height:1.35; flex:1; }
+    .task-delete { background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem; line-height:1; padding:0 0.15rem; transition:color 0.2s; flex-shrink:0; }
+    .task-delete:hover { color:var(--red); }
+    .task-note { font-size:0.78rem; color:rgba(240,233,218,0.45); margin-bottom:0.75rem; line-height:1.4; }
+    .task-footer { display:flex; justify-content:space-between; align-items:center; }
+    .priority-badge { display:inline-block; font-family:var(--ff-mono); font-size:0.6rem; letter-spacing:0.08em; padding:0.2rem 0.5rem; border:1px solid; }
+    .priority-high   { color:var(--red);   border-color:rgba(192,84,74,0.4);  background:var(--red-lo); }
+    .priority-medium { color:var(--accent); border-color:rgba(56,189,248,0.4); background:var(--accent-lo); }
+    .priority-low    { color:var(--green);  border-color:rgba(90,158,111,0.4); background:var(--green-lo); }
+    .task-id { font-family:var(--ff-mono); font-size:0.6rem; color:rgba(122,116,105,0.4); letter-spacing:0.08em; }
+
+    /* DONE COLUMN GLOW */
+    .col-done .task-list { position:relative; }
+    .col-done.celebrating .column-color { animation:glowPulse 1s ease forwards; }
+    @keyframes glowPulse { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 20px var(--green)} }
+
+    /* EMPTY COLUMN */
+    .empty-col { display:none; flex:1; min-height:80px; align-items:center; justify-content:center; }
+    .empty-col.show { display:flex; }
+    .empty-col p { font-family:var(--ff-mono); font-size:0.68rem; color:rgba(122,116,105,0.35); letter-spacing:0.1em; }
+
+    /* CONFETTI */
+    .confetti-piece {
+      position:fixed; width:8px; height:8px; pointer-events:none; z-index:1000;
+      animation:confettiFall var(--dur,1.2s) ease-in forwards;
+      border-radius:var(--r,0);
+    }
+    @keyframes confettiFall {
+      0%   {transform:translate(0,0) rotate(0deg);   opacity:1;}
+      100% {transform:translate(var(--tx),var(--ty)) rotate(var(--rot)); opacity:0;}
+    }
+
+    /* KEYBOARD HINT */
+    .keyboard-hint { padding:0.75rem 4rem; border-top:1px solid var(--border); background:var(--surface); }
+    .keyboard-hint p { font-family:var(--ff-mono); font-size:0.65rem; color:var(--muted); letter-spacing:0.05em; }
+    kbd { display:inline-block; padding:0.1rem 0.35rem; background:var(--card); border:1px solid var(--border); font-family:var(--ff-mono); font-size:0.6rem; color:var(--cream); border-radius:2px; }
+
+    @media(max-width:900px) {
+      nav,  .page-header, .form-panel { padding-left:1.5rem; padding-right:1.5rem; }
+      .board { grid-template-columns:1fr; }
+      .column {
+      backdrop-filter:blur(20px) saturate(1.4);
+      -webkit-backdrop-filter:blur(20px) saturate(1.4); border-right:none; border-bottom:1px solid var(--border); }
+      .column-header { top:63px; }
+      .keyboard-hint, .progress-label { padding-left:1.5rem; padding-right:1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="https://anthonyvallone.netlify.app/">AV.dev</a>
+    <a class="nav-back" href="https://anthonyvallone.netlify.app/">← Back to Portfolio</a>
+  </nav>
+
+  <div class="progress-track" id="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+    <span class="progress-label" id="progress-label">0% complete</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <p class="page-tag">Project 02</p>
+      <h1 class="page-title">Task<br /><em>Manager.</em></h1>
+    </div>
+    <button class="add-task-btn" id="open-form-btn">+ New Task</button>
+  </div>
+
+  <div class="form-panel" id="form-panel">
+    <div class="form-inner">
+      <input type="text" class="form-input" id="task-title-input" placeholder="Task title..." maxlength="80" autocomplete="off" />
+      <input type="text" class="form-input" id="task-note-input"  placeholder="Optional note..." maxlength="120" style="flex:0.7" autocomplete="off" />
+      <select class="form-select" id="task-priority-select">
+        <option value="medium">Medium priority</option>
+        <option value="high">High priority</option>
+        <option value="low">Low priority</option>
+      </select>
+      <select class="form-select" id="task-column-select">
+        <option value="backlog">Backlog</option>
+        <option value="in-progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+      <button class="form-submit" id="add-task-submit">Add Task</button>
+      <button class="form-cancel" id="cancel-form-btn">Cancel</button>
+    </div>
+  </div>
+
+  <div class="board">
+    <div class="column col-backlog">
+      <div class="column-header">
+        <span class="column-title">Backlog</span>
+        <span class="column-count" id="count-backlog">0</span>
+      </div>
+      <div class="column-color"></div>
+      <div class="task-list" id="list-backlog" data-column="backlog">
+        <div class="empty-col" id="empty-backlog"><p>// drop tasks here</p></div>
+      </div>
+    </div>
+    <div class="column col-in-progress">
+      <div class="column-header">
+        <span class="column-title">In Progress</span>
+        <span class="column-count" id="count-in-progress">0</span>
+      </div>
+      <div class="column-color"></div>
+      <div class="task-list" id="list-in-progress" data-column="in-progress">
+        <div class="empty-col" id="empty-in-progress"><p>// drop tasks here</p></div>
+      </div>
+    </div>
+    <div class="column col-done" id="col-done">
+      <div class="column-header">
+        <span class="column-title">Done</span>
+        <span class="column-count" id="count-done">0</span>
+      </div>
+      <div class="column-color"></div>
+      <div class="task-list" id="list-done" data-column="done">
+        <div class="empty-col" id="empty-done"><p>// drop tasks here</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="keyboard-hint">
+    <p><kbd>Enter</kbd> to add &nbsp;·&nbsp; <kbd>Esc</kbd> to cancel &nbsp;·&nbsp; Drag cards between columns &nbsp;·&nbsp; Auto-saved to browser</p>
+  </div>
+
+  <script>
+    // ── STATE ───────────────────────────────────────────────────
+    let tasks = (() => { try { return JSON.parse(localStorage.getItem('av_tasks2')) || getDefaults(); } catch { return getDefaults(); } })();
+    let draggedId = null;
+    let taskCounter = tasks.reduce((m,t) => Math.max(m,t.id), 0);
+
+    function getDefaults() {
+      return [
+        {id:1, title:'Build portfolio site',    note:'HTML/CSS/JS — single file',   priority:'high',   column:'done'},
+        {id:2, title:'Add live weather API',     note:'OpenWeatherMap free tier',    priority:'high',   column:'done'},
+        {id:3, title:'Deploy to Netlify',        note:'Drag & drop deploy',          priority:'medium', column:'in-progress'},
+        {id:4, title:'Connect custom domain',    note:'',                            priority:'low',    column:'backlog'},
+        {id:5, title:'Learn React basics',       note:'useState, useEffect, props',  priority:'high',   column:'in-progress'},
+        {id:6, title:'Create GitHub profile README', note:'AJVALLONE/AJVALLONE repo', priority:'medium',column:'backlog'},
+      ];
+    }
+
+    function save() { localStorage.setItem('av_tasks2', JSON.stringify(tasks)); }
+
+    // ── PROGRESS BAR ───────────────────────────────────────────
+    function updateProgress() {
+      const total = tasks.length;
+      const done  = tasks.filter(t => t.column === 'done').length;
+      const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
+      const fill  = document.getElementById('progress-fill');
+      const label = document.getElementById('progress-label');
+      fill.style.width = pct + '%';
+      label.textContent = pct + '% complete';
+      label.classList.toggle('complete', pct === 100);
+    }
+
+    // ── RENDER ─────────────────────────────────────────────────
+    function render() {
+      ['backlog','in-progress','done'].forEach(col => {
+        const list  = document.getElementById(`list-${col}`);
+        const empty = document.getElementById(`empty-${col}`);
+        const count = document.getElementById(`count-${col}`);
+        const colTasks = tasks.filter(t => t.column === col);
+        const prevCount = parseInt(count.textContent) || 0;
+        count.textContent = colTasks.length;
+        if (colTasks.length !== prevCount) { count.classList.add('bump'); setTimeout(() => count.classList.remove('bump'), 350); }
+        list.querySelectorAll('.task-card').forEach(el => el.remove());
+        if (colTasks.length === 0) { empty.classList.add('show'); }
+        else { empty.classList.remove('show'); colTasks.forEach(t => list.appendChild(createCard(t))); }
+      });
+      updateProgress();
+      save();
+    }
+
+    function escHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    function createCard(task) {
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.draggable = true;
+      card.dataset.id = task.id;
+      const labels = {high:'High',medium:'Medium',low:'Low'};
+      card.innerHTML = `
+        <div class="task-card-top">
+          <p class="task-title">${escHtml(task.title)}</p>
+          <button class="task-delete" data-id="${task.id}" title="Delete">×</button>
+        </div>
+        ${task.note ? `<p class="task-note">${escHtml(task.note)}</p>` : ''}
+        <div class="task-footer">
+          <span class="priority-badge priority-${task.priority}">${labels[task.priority]}</span>
+          <span class="task-id">#${String(task.id).padStart(3,'0')}</span>
+        </div>`;
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragend',   handleDragEnd);
+      card.querySelector('.task-delete').addEventListener('click', e => { e.stopPropagation(); deleteTask(parseInt(e.currentTarget.dataset.id)); });
+      return card;
+    }
+
+    // ── CONFETTI ───────────────────────────────────────────────
+    function fireConfetti(x, y) {
+      const colors = ['#38bdf8','#5a9e6f','#ddeeff','#4a82a8','#c0544a','#fff'];
+      for (let i = 0; i < 28; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        const angle = (Math.random() * 360) * (Math.PI / 180);
+        const dist  = 80 + Math.random() * 160;
+        const tx    = Math.cos(angle) * dist;
+        const ty    = -(60 + Math.random() * 200);
+        const rot   = `${(Math.random() - 0.5) * 720}deg`;
+        const dur   = (0.8 + Math.random() * 0.7) + 's';
+        const r     = Math.random() > 0.5 ? '50%' : '0';
+        el.style.cssText = `left:${x}px;top:${y}px;background:${colors[Math.floor(Math.random()*colors.length)]};--tx:${tx}px;--ty:${ty}px;--rot:${rot};--dur:${dur};--r:${r}`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1600);
+      }
+    }
+
+    // ── CRUD ───────────────────────────────────────────────────
+    function addTask(title, note, priority, column) {
+      if (!title.trim()) return false;
+      taskCounter++;
+      tasks.push({id:taskCounter, title:title.trim(), note:note.trim(), priority, column});
+      render(); return true;
+    }
+
+    function deleteTask(id) {
+      const card = document.querySelector(`.task-card[data-id="${id}"]`);
+      if (card) {
+        card.classList.add('removing');
+        setTimeout(() => { tasks = tasks.filter(t => t.id !== id); render(); }, 280);
+      }
+    }
+
+    function moveTask(id, newCol) {
+      const task = tasks.find(t => t.id === id);
+      const wasntDone = task && task.column !== 'done';
+      if (task) task.column = newCol;
+      render();
+      if (newCol === 'done' && wasntDone) {
+        const doneList = document.getElementById('list-done');
+        const rect = doneList.getBoundingClientRect();
+        fireConfetti(rect.left + rect.width / 2, rect.top + 60);
+        const col = document.getElementById('col-done');
+        col.classList.add('celebrating');
+        setTimeout(() => col.classList.remove('celebrating'), 1200);
+      }
+    }
+
+    // ── DRAG & DROP ────────────────────────────────────────────
+    function handleDragStart(e) {
+      draggedId = parseInt(e.currentTarget.dataset.id);
+      e.currentTarget.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+    function handleDragEnd(e) {
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.task-list').forEach(l => l.classList.remove('drag-over'));
+    }
+
+    document.querySelectorAll('.task-list').forEach(list => {
+      list.addEventListener('dragover', e => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+        document.querySelectorAll('.task-list').forEach(l => l.classList.remove('drag-over'));
+        list.classList.add('drag-over');
+      });
+      list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) list.classList.remove('drag-over'); });
+      list.addEventListener('drop', e => {
+        e.preventDefault(); list.classList.remove('drag-over');
+        if (draggedId !== null) { moveTask(draggedId, list.dataset.column); draggedId = null; }
+      });
+    });
+
+    // ── FORM ───────────────────────────────────────────────────
+    const openBtn   = document.getElementById('open-form-btn');
+    const formPanel = document.getElementById('form-panel');
+    const cancelBtn = document.getElementById('cancel-form-btn');
+    const titleIn   = document.getElementById('task-title-input');
+    const noteIn    = document.getElementById('task-note-input');
+    const priSel    = document.getElementById('task-priority-select');
+    const colSel    = document.getElementById('task-column-select');
+    const submitBtn = document.getElementById('add-task-submit');
+
+    function openForm()  { formPanel.classList.add('open'); titleIn.focus(); }
+    function closeForm() { formPanel.classList.remove('open'); titleIn.value=''; noteIn.value=''; priSel.value='medium'; colSel.value='backlog'; }
+    function submitForm() { if (addTask(titleIn.value, noteIn.value, priSel.value, colSel.value)) closeForm(); else titleIn.focus(); }
+
+    openBtn.addEventListener('click', openForm);
+    cancelBtn.addEventListener('click', closeForm);
+    submitBtn.addEventListener('click', submitForm);
+    titleIn.addEventListener('keydown', e => { if(e.key==='Enter') submitForm(); if(e.key==='Escape') closeForm(); });
+    noteIn.addEventListener('keydown',  e => { if(e.key==='Enter') submitForm(); if(e.key==='Escape') closeForm(); });
+    document.addEventListener('keydown', e => { if(e.key==='Escape' && formPanel.classList.contains('open')) closeForm(); });
+
+    render();
+  </script>
+</body>
+</html>
