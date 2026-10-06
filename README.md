@@ -15,7 +15,7 @@ A Kanban-style task management board built entirely in vanilla JavaScript — no
 HTML5 · CSS3 · JavaScript (ES6+) · LocalStorage · HTML5 Drag and Drop API
 
 ## Live Demo
-[View Live →](https://ajvallone.netlify.app/task-manager.html)
+[View Live →](https://ajvallone.netlify.app/task-manager)
 
 ## What I Built This to Show
 - DOM manipulation and event delegation
